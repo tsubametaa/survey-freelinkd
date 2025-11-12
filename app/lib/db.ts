@@ -18,7 +18,9 @@ export const mongoDbName =
   process.env.NEXT_PUBLIC_MONGODB_DB_NAME ??
   "freelinkd-db";
 
-const shouldUseTls = resolvedUri.startsWith("mongodb+srv://");
+const shouldUseTls =
+  resolvedUri.startsWith("mongodb+srv://") ||
+  resolvedUri.includes("mongodb.net");
 
 const clientOptions: MongoClientOptions = {
   serverApi: {
@@ -28,12 +30,12 @@ const clientOptions: MongoClientOptions = {
   },
   retryWrites: true,
   retryReads: true,
-  maxPoolSize: 10,
+  maxPoolSize: 8,
   minPoolSize: 0,
   maxIdleTimeMS: 10000,
-  serverSelectionTimeoutMS: 4000,
-  connectTimeoutMS: 4000,
-  socketTimeoutMS: 10000,
+  serverSelectionTimeoutMS: 8000,
+  connectTimeoutMS: 8000,
+  socketTimeoutMS: 20000,
 };
 
 if (shouldUseTls) {
@@ -64,7 +66,12 @@ async function createClient(): Promise<MongoClient> {
     );
   }
 
-  console.log("Creating MongoDB client...");
+  console.log("Creating MongoDB client...", {
+    mongoDbName,
+    usingTls: shouldUseTls,
+    serverSelectionTimeoutMS: clientOptions.serverSelectionTimeoutMS,
+    socketTimeoutMS: clientOptions.socketTimeoutMS,
+  });
   const client = new MongoClient(resolvedUri, clientOptions);
 
   try {
@@ -125,7 +132,10 @@ export async function getMongoDb() {
   const client = await resolveClient();
 
   try {
-    return client.db(mongoDbName);
+    const db = client.db(mongoDbName);
+    await db.command({ ping: 1 });
+    console.log("MongoDB ping successful", { database: mongoDbName });
+    return db;
   } catch (error) {
     mongoState!.client = null;
     mongoState!.promise = null;
