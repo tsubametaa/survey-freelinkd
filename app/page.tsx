@@ -51,6 +51,7 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState<Step>("intro");
   const [userRole, setUserRole] = useState<UserRole>("");
   const [formData, setFormData] = useState<FormData>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleIntroComplete = (data: IntroData) => {
     setFormData({ ...formData, intro: data });
@@ -81,27 +82,61 @@ export default function Home() {
   const handleQAEndComplete = async (data: Answer[]) => {
     const finalData = { ...formData, qaEnd: { answers: data }, userRole };
 
+    setIsSubmitting(true);
+
     try {
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+
       const response = await fetch("/api/submit-questionnaire", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(finalData),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
+      const result = await response.json();
+
       if (response.ok) {
+        console.log("Questionnaire submitted successfully:", result);
         setFormData(finalData);
         setCurrentStep("results");
       } else {
-        console.error("Failed to submit questionnaire");
+        console.error("Failed to submit questionnaire:", result);
+        alert(
+          `Gagal mengirim kuesioner: ${
+            result.error || "Terjadi kesalahan pada server"
+          }`
+        );
+        // Still proceed to results page
         setFormData(finalData);
         setCurrentStep("results");
       }
     } catch (error) {
       console.error("Error submitting questionnaire:", error);
+
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          alert(
+            "Pengiriman kuesioner timeout. Silakan coba lagi atau hubungi administrator."
+          );
+        } else {
+          alert(`Error: ${error.message}`);
+        }
+      } else {
+        alert("Terjadi kesalahan saat mengirim kuesioner. Silakan coba lagi.");
+      }
+
+      // Still proceed to results page
       setFormData(finalData);
       setCurrentStep("results");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -289,6 +324,7 @@ export default function Home() {
           onComplete={handleQAEndComplete}
           onBack={handleBack}
           initialAnswers={formData.qaEnd?.answers}
+          isSubmitting={isSubmitting}
         />
       )}
 

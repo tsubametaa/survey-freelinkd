@@ -4,7 +4,7 @@ import { getMongoDb } from "../../lib/db";
 import type { Answer, QuestionnaireData } from "../../types/kuesioner";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 15;
+export const maxDuration = 30; // Increased from 15 to 30 seconds
 export const runtime = "nodejs";
 
 type IncomingQuestionnaire = Partial<Omit<QuestionnaireData, "submittedAt">>;
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     console.log("🔌 Connecting to MongoDB...");
 
     let db;
-    let retries = 3;
+    let retries = 2; // Reduced from 3 to 2
     let lastError;
 
     // Retry logic for MongoDB connection
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
           error
         );
         if (retries > 0) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Reduced from 1000ms to 500ms
         }
       }
     }

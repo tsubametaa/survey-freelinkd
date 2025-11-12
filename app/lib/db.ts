@@ -27,10 +27,10 @@ const clientOptions: MongoClientOptions = {
   },
   maxPoolSize: 10,
   minPoolSize: 1,
-  maxIdleTimeMS: 30000,
-  serverSelectionTimeoutMS: 15000,
-  socketTimeoutMS: 60000,
-  connectTimeoutMS: 15000,
+  maxIdleTimeMS: 10000,
+  serverSelectionTimeoutMS: 5000, // Reduced from 15000
+  socketTimeoutMS: 10000, // Reduced from 60000
+  connectTimeoutMS: 5000, // Reduced from 15000
   retryWrites: true,
   retryReads: true,
 };
@@ -78,10 +78,6 @@ export async function getMongoDb() {
     const db = connectedClient.db(mongoDbName);
     console.log("Database instance retrieved:", mongoDbName);
 
-    // Test the connection with a ping
-    await db.admin().ping();
-    console.log("Database ping successful");
-
     return db;
   } catch (error) {
     console.error("MongoDB connection error:", error);
@@ -93,6 +89,9 @@ export async function getMongoDb() {
       "Error message:",
       error instanceof Error ? error.message : String(error)
     );
+
+    // Reset client promise on error so next attempt can retry
+    clientPromise = null;
 
     throw new Error(
       `Failed to connect to MongoDB: ${
