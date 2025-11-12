@@ -97,29 +97,85 @@ Jika perlu update environment variables:
 
 ## Perbaikan yang Dilakukan
 
-### ✅ Masalah: Internal Server Error di Production
+### ✅ Masalah: Internal Server Error di Production (FIXED - Nov 12, 2025)
 
 **Penyebab:**
 
-1. `runtime = "nodejs"` tidak kompatibel dengan Vercel Edge Runtime
-2. Timeout koneksi MongoDB terlalu pendek (5000ms)
-3. Kurang logging untuk debugging
-4. Tidak ada error handling yang detail
+1. MongoDB connection tidak stabil di serverless environment
+2. Timeout koneksi MongoDB terlalu pendek untuk cold starts
+3. Tidak ada retry logic untuk koneksi yang gagal
+4. MongoClient initialization tidak optimal untuk production
 
-**Solusi:**
+**Solusi yang Diterapkan:**
 
-1. ❌ Hapus `export const runtime = "nodejs"` (gunakan default)
-2. ✅ Tambah `export const maxDuration = 10` untuk Vercel timeout
-3. ✅ Update MongoDB client options:
-   - `maxPoolSize: 10`
-   - `serverSelectionTimeoutMS: 10000`
-   - `socketTimeoutMS: 45000`
-   - `retryWrites: true`
-   - `retryReads: true`
-4. ✅ Tambah comprehensive logging dengan emoji untuk mudah tracking
-5. ✅ Enhanced error handling dengan stack trace di development
-6. ✅ Tambah validation yang lebih ketat untuk incoming data
-7. ✅ Sanitize input untuk keamanan
+1. ✅ **Increased Timeouts:**
+
+   - `serverSelectionTimeoutMS: 15000` (dari 10000)
+   - `socketTimeoutMS: 60000` (dari 45000)
+   - `connectTimeoutMS: 15000` (tambah baru)
+   - `maxDuration: 15` (dari 10)
+
+2. ✅ **Retry Logic:**
+
+   - Tambah 3x retry untuk MongoDB connection
+   - Delay 1 detik antara retry
+   - Better error logging per attempt
+
+3. ✅ **Production-Optimized Client:**
+
+   - Create new MongoClient per invocation di production
+   - Cache client di development untuk performance
+   - Tambah ping test setelah koneksi untuk validasi
+
+4. ✅ **Enhanced Logging:**
+
+   ```typescript
+   console.log("🔌 Connecting to MongoDB...");
+   console.log("Environment:", process.env.NODE_ENV);
+   console.log("MongoDB URI exists:", !!resolvedUri);
+   console.log("Database name:", mongoDbName);
+   ```
+
+5. ✅ **Better Error Handling:**
+   - Detailed error type logging
+   - Stack trace in development
+   - Graceful degradation jika revalidate gagal
+
+### Code Changes Summary:
+
+**`app/lib/db.ts`:**
+
+```typescript
+// Production: Create new client for serverless
+if (process.env.NODE_ENV === "development") {
+  // Cache globally in dev
+} else {
+  const client = new MongoClient(resolvedUri, clientOptions);
+  clientPromise = client.connect();
+}
+
+// Tambah ping test
+await db.admin().ping();
+console.log("Database ping successful");
+```
+
+**`app/api/submit-questionnaire/route.ts`:**
+
+```typescript
+// Retry logic
+let retries = 3;
+while (retries > 0) {
+  try {
+    db = await getMongoDb();
+    break;
+  } catch (error) {
+    retries--;
+    if (retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+}
+```
 
 ### ✅ Environment Variables
 

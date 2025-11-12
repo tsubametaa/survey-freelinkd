@@ -27,13 +27,12 @@ const clientOptions: MongoClientOptions = {
   maxPoolSize: 10,
   minPoolSize: 1,
   maxIdleTimeMS: 30000,
-  serverSelectionTimeoutMS: 10000,
-  socketTimeoutMS: 45000,
+  serverSelectionTimeoutMS: 15000,
+  socketTimeoutMS: 60000,
+  connectTimeoutMS: 15000,
   retryWrites: true,
   retryReads: true,
 };
-
-const client = new MongoClient(resolvedUri, clientOptions);
 
 let clientPromise: Promise<MongoClient>;
 
@@ -43,23 +42,45 @@ if (process.env.NODE_ENV === "development") {
   };
 
   if (!globalWithMongo._mongoClientPromise) {
+    const client = new MongoClient(resolvedUri, clientOptions);
     globalWithMongo._mongoClientPromise = client.connect();
   }
   clientPromise = globalWithMongo._mongoClientPromise;
 } else {
+  // Production: Create new client for each serverless function invocation
+  const client = new MongoClient(resolvedUri, clientOptions);
   clientPromise = client.connect();
 }
 
 export async function getMongoDb() {
   try {
-    console.log("🔌 Attempting to connect to MongoDB...");
+    console.log("Attempting to connect to MongoDB...");
+    console.log("Environment:", process.env.NODE_ENV);
+    console.log("MongoDB URI exists:", !!resolvedUri);
+    console.log("Database name:", mongoDbName);
+
     const connectedClient = await clientPromise;
-    console.log("✅ MongoDB client connected");
+    console.log("MongoDB client connected");
+
     const db = connectedClient.db(mongoDbName);
-    console.log("✅ Database instance retrieved:", mongoDbName);
+    console.log("Database instance retrieved:", mongoDbName);
+
+    // Test the connection with a ping
+    await db.admin().ping();
+    console.log("Database ping successful");
+
     return db;
   } catch (error) {
-    console.error("❌ MongoDB connection error:", error);
+    console.error("MongoDB connection error:", error);
+    console.error(
+      "Error type:",
+      error instanceof Error ? error.constructor.name : typeof error
+    );
+    console.error(
+      "Error message:",
+      error instanceof Error ? error.message : String(error)
+    );
+
     throw new Error(
       `Failed to connect to MongoDB: ${
         error instanceof Error ? error.message : "Unknown error"

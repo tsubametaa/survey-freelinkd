@@ -4,7 +4,8 @@ import { getMongoDb } from "../../lib/db";
 import type { Answer, QuestionnaireData } from "../../types/kuesioner";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 10;
+export const maxDuration = 15;
+export const runtime = "nodejs";
 
 type IncomingQuestionnaire = Partial<Omit<QuestionnaireData, "submittedAt">>;
 
@@ -71,6 +72,8 @@ function validatePayload(data: IncomingQuestionnaire) {
 export async function POST(request: NextRequest) {
   try {
     console.log("📝 Receiving questionnaire submission...");
+    console.log("Environment:", process.env.NODE_ENV);
+    console.log("Timestamp:", new Date().toISOString());
 
     const payload = (await request.json()) as IncomingQuestionnaire;
     console.log("✅ Payload parsed successfully");
@@ -97,9 +100,38 @@ export async function POST(request: NextRequest) {
       submittedAt: new Date(),
     };
 
-    console.log("Connecting to MongoDB...");
-    const db = await getMongoDb();
-    console.log("MongoDB connected");
+    console.log("🔌 Connecting to MongoDB...");
+
+    let db;
+    let retries = 3;
+    let lastError;
+
+    // Retry logic for MongoDB connection
+    while (retries > 0) {
+      try {
+        db = await getMongoDb();
+        console.log("✅ MongoDB connected successfully");
+        break;
+      } catch (error) {
+        lastError = error;
+        retries--;
+        console.warn(
+          `MongoDB connection attempt failed. Retries left: ${retries}`,
+          error
+        );
+        if (retries > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+    }
+
+    if (!db) {
+      throw new Error(
+        `Failed to connect to MongoDB after multiple attempts: ${
+          lastError instanceof Error ? lastError.message : "Unknown error"
+        }`
+      );
+    }
 
     console.log("Inserting document...");
     const result = await db.collection("kuesioner").insertOne(document);
