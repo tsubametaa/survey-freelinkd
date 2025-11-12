@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { MongoServerSelectionError } from "mongodb";
 import { getMongoDb } from "../../lib/db";
 import type { Answer, QuestionnaireData } from "../../types/kuesioner";
 
@@ -149,14 +150,19 @@ export async function POST(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
     });
 
-    const message =
+    let errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
+
+    if (error instanceof MongoServerSelectionError) {
+      errorMessage =
+        "Tidak dapat terhubung ke database. Silakan coba lagi dalam beberapa saat.";
+    }
 
     return NextResponse.json(
       {
         success: false,
         message: "Failed to submit questionnaire",
-        error: message,
+        error: errorMessage,
         details:
           process.env.NODE_ENV === "development"
             ? error instanceof Error

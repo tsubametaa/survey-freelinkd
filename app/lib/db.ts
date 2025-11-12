@@ -8,9 +8,8 @@ const resolvedUri =
   process.env.MONGODB_URI ?? process.env.NEXT_PUBLIC_MONGODB_URI ?? "";
 
 if (!resolvedUri) {
-  // Warning during build time, will error at runtime if still missing
   console.warn(
-    "⚠️ WARNING: MONGODB_URI environment variable is not set. Connection will fail at runtime."
+    "WARNING: MONGODB_URI environment variable is not set. Questionnaire submissions will fail at runtime."
   );
 }
 
@@ -19,141 +18,121 @@ export const mongoDbName =
   process.env.NEXT_PUBLIC_MONGODB_DB_NAME ??
   "freelinkd-db";
 
+const shouldUseTls = resolvedUri.startsWith("mongodb+srv://");
+
 const clientOptions: MongoClientOptions = {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: false,
     deprecationErrors: true,
   },
-  maxPoolSize: 10,
-  minPoolSize: 1,
-  maxIdleTimeMS: 10000,
-  serverSelectionTimeoutMS: 8000, // Increased slightly for stability
-  socketTimeoutMS: 15000, // Increased for better reliability
-  connectTimeoutMS: 8000, // Increased for better reliability
   retryWrites: true,
   retryReads: true,
-  // SSL/TLS settings for MongoDB Atlas
-  tls: true,
-  tlsAllowInvalidCertificates: false,
-  tlsAllowInvalidHostnames: false,
+  maxPoolSize: 10,
+  minPoolSize: 0,
+  maxIdleTimeMS: 10000,
+  serverSelectionTimeoutMS: 4000,
+  connectTimeoutMS: 4000,
+  socketTimeoutMS: 10000,
 };
 
-let clientPromise: Promise<MongoClient> | null = null;
-let globalClient: MongoClient | null = null;
+if (shouldUseTls) {
+  clientOptions.tls = true;
+  clientOptions.tlsAllowInvalidCertificates = false;
+  clientOptions.tlsAllowInvalidHostnames = false;
+}
 
-// Helper function to create a fresh connection
-async function createConnection(): Promise<MongoClient> {
-  console.log("Creating new MongoDB connection...");
+type MongoState = {
+  client: MongoClient | null;
+  promise: Promise<MongoClient> | null;
+};
+
+const globalWithMongo = global as typeof globalThis & {
+  _freelinkdMongo?: MongoState;
+};
+
+if (!globalWithMongo._freelinkdMongo) {
+  globalWithMongo._freelinkdMongo = { client: null, promise: null };
+}
+
+const mongoState = globalWithMongo._freelinkdMongo;
+
+async function createClient(): Promise<MongoClient> {
+  if (!resolvedUri) {
+    throw new Error(
+      "Missing MONGODB_URI environment variable. Please set it in your deployment settings."
+    );
+  }
+
+  console.log("Creating MongoDB client...");
   const client = new MongoClient(resolvedUri, clientOptions);
 
   try {
     await client.connect();
-    console.log("MongoDB connection established successfully");
+    console.log("MongoDB connection established");
     return client;
   } catch (error) {
     console.error("Failed to establish MongoDB connection:", error);
-    await client.close().catch(() => {}); // Clean up failed connection
+    await client.close().catch(() => {});
     throw error;
   }
 }
 
-if (resolvedUri) {
-  if (process.env.NODE_ENV === "development") {
-    const globalWithMongo = global as typeof globalThis & {
-      _mongoClientPromise?: Promise<MongoClient>;
-      _mongoClient?: MongoClient;
-    };
-
-    if (!globalWithMongo._mongoClientPromise) {
-      globalWithMongo._mongoClientPromise = createConnection();
-      globalWithMongo._mongoClientPromise
-        .then((client) => {
-          globalWithMongo._mongoClient = client;
-        })
-        .catch(() => {
-          // Reset on error
-          globalWithMongo._mongoClientPromise = undefined;
-          globalWithMongo._mongoClient = undefined;
-        });
-    }
-    clientPromise = globalWithMongo._mongoClientPromise;
-  } else {
-    // Production: Try to reuse existing client if available
-    if (globalClient) {
-      clientPromise = Promise.resolve(globalClient);
-    } else {
-      clientPromise = createConnection().then((client) => {
-        globalClient = client;
-        return client;
-      });
-    }
+async function resolveClient(): Promise<MongoClient> {
+  if (mongoState?.client) {
+    return mongoState.client;
   }
+
+  if (!mongoState?.promise) {
+    mongoState!.promise = (async () => {
+      let lastError: Error | null = null;
+      const maxAttempts = process.env.NODE_ENV === "production" ? 2 : 3;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          console.log(
+            `MongoDB connection attempt ${attempt}/${maxAttempts} (${process.env.NODE_ENV})`
+          );
+          const client = await createClient();
+          mongoState!.client = client;
+          return client;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          mongoState!.client = null;
+
+          if (attempt < maxAttempts) {
+            const waitTime = attempt * 500;
+            console.warn(
+              `MongoDB connection attempt ${attempt} failed: ${lastError.message}. Retrying in ${waitTime}ms`
+            );
+            await new Promise((resolve) => setTimeout(resolve, waitTime));
+          }
+        }
+      }
+
+      mongoState!.promise = null;
+      throw lastError ?? new Error("Failed to connect to MongoDB");
+    })().catch((error) => {
+      mongoState!.promise = null;
+      throw error;
+    });
+  }
+
+  return mongoState!.promise!;
 }
 
 export async function getMongoDb() {
-  if (!resolvedUri) {
-    throw new Error(
-      "Missing MONGODB_URI environment variable. Please set it in your Vercel project settings."
-    );
+  const client = await resolveClient();
+
+  try {
+    return client.db(mongoDbName);
+  } catch (error) {
+    mongoState!.client = null;
+    mongoState!.promise = null;
+    throw error instanceof Error
+      ? error
+      : new Error("Unknown error while retrieving MongoDB database");
   }
-
-  let lastError: Error | null = null;
-  const maxRetries = 3;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`MongoDB connection attempt ${attempt}/${maxRetries}...`);
-      console.log("Environment:", process.env.NODE_ENV);
-      console.log("MongoDB URI exists:", !!resolvedUri);
-      console.log("Database name:", mongoDbName);
-
-      // If clientPromise is null or failed, create a new one
-      if (!clientPromise) {
-        console.log("No existing client promise, creating new connection...");
-        clientPromise = createConnection();
-      }
-
-      const connectedClient = await clientPromise;
-      console.log("MongoDB client connected successfully");
-
-      const db = connectedClient.db(mongoDbName);
-
-      // Test the connection with a ping
-      await db.admin().ping();
-      console.log("Database ping successful:", mongoDbName);
-
-      return db;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      console.error(`MongoDB connection attempt ${attempt} failed:`, {
-        name: lastError.name,
-        message: lastError.message,
-        attempt,
-        maxRetries,
-      });
-
-      // Reset client promise to force new connection on next attempt
-      clientPromise = null;
-      globalClient = null;
-
-      // Wait before retrying (exponential backoff)
-      if (attempt < maxRetries) {
-        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        console.log(`Waiting ${waitTime}ms before retry...`);
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-      }
-    }
-  }
-
-  // If we've exhausted all retries, throw a detailed error
-  const errorMessage = lastError
-    ? `Failed to connect to MongoDB after ${maxRetries} attempts: ${lastError.message}`
-    : `Failed to connect to MongoDB after ${maxRetries} attempts`;
-
-  console.error("All MongoDB connection attempts failed");
-  throw new Error(errorMessage);
 }
 
-export default clientPromise;
+export default resolveClient;
