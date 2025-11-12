@@ -102,40 +102,23 @@ export async function POST(request: NextRequest) {
 
     console.log("🔌 Connecting to MongoDB...");
 
-    let db;
-    let retries = 2; // Reduced from 3 to 2
-    let lastError;
+    // Use the improved getMongoDb with built-in retry logic
+    const db = await getMongoDb();
+    console.log("✅ MongoDB connected successfully");
 
-    // Retry logic for MongoDB connection
-    while (retries > 0) {
-      try {
-        db = await getMongoDb();
-        console.log("✅ MongoDB connected successfully");
-        break;
-      } catch (error) {
-        lastError = error;
-        retries--;
-        console.warn(
-          `MongoDB connection attempt failed. Retries left: ${retries}`,
-          error
-        );
-        if (retries > 0) {
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Reduced from 1000ms to 500ms
-        }
-      }
-    }
+    console.log("💾 Inserting document...");
 
-    if (!db) {
-      throw new Error(
-        `Failed to connect to MongoDB after multiple attempts: ${
-          lastError instanceof Error ? lastError.message : "Unknown error"
-        }`
-      );
-    }
+    // Insert with timeout protection
+    const insertPromise = db.collection("kuesioner").insertOne(document);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Insert operation timed out after 10 seconds")),
+        10000
+      )
+    );
 
-    console.log("Inserting document...");
-    const result = await db.collection("kuesioner").insertOne(document);
-    console.log("Document inserted with ID:", result.insertedId.toString());
+    const result = await Promise.race([insertPromise, timeoutPromise]);
+    console.log("✅ Document inserted with ID:", result.insertedId.toString());
 
     try {
       revalidatePath("/site/admin");
