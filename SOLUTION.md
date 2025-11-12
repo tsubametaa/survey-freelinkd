@@ -3,6 +3,7 @@
 ## 🔍 Root Cause Analysis
 
 ### Masalah Utama:
+
 1. **Runtime Configuration Error** - `runtime = "nodejs"` tidak kompatibel dengan Vercel Edge Runtime
 2. **MongoDB Timeout** - Connection timeout terlalu pendek (5 detik) untuk cold start di Vercel
 3. **Insufficient Logging** - Sulit debug karena kurang logging detail
@@ -13,6 +14,7 @@
 ### File yang Dimodifikasi:
 
 #### 1. `app/api/submit-questionnaire/route.ts`
+
 - ❌ **REMOVED:** `export const runtime = "nodejs"`
 - ✅ **ADDED:** `export const maxDuration = 10`
 - ✅ **ADDED:** Comprehensive logging dengan emoji (📝, ✅, 🔌, 💾, ❌)
@@ -20,16 +22,19 @@
 - ✅ **IMPROVED:** Validation dan sanitization
 
 #### 2. `app/lib/db.ts`
+
 - ✅ **UPDATED:** MongoDB client options dengan timeout yang lebih panjang
 - ✅ **ADDED:** Connection pooling (`maxPoolSize`, `minPoolSize`)
 - ✅ **ADDED:** Retry mechanism (`retryWrites`, `retryReads`)
 - ✅ **ENHANCED:** `getMongoDb()` function dengan error handling
 
 #### 3. `app/types/kuesioner.ts`
+
 - ✅ **FIXED:** `IntroData.age` dari `number` ke `string`
 - ✅ **FIXED:** `submittedAt` support both `Date | string`
 
 #### 4. **NEW FILES:**
+
 - ✅ `vercel.json` - Vercel configuration
 - ✅ `.env.example` - Environment variables template
 - ✅ `DEPLOYMENT.md` - Panduan deployment lengkap
@@ -38,6 +43,7 @@
 ## 🚀 Cara Deploy ke Vercel
 
 ### Step 1: Setup MongoDB Atlas
+
 ```bash
 1. Login ke MongoDB Atlas
 2. Network Access → Add IP Address → 0.0.0.0/0
@@ -46,6 +52,7 @@
 ```
 
 ### Step 2: Setup Vercel Environment Variables
+
 ```bash
 Vercel Dashboard → Settings → Environment Variables
 
@@ -55,6 +62,7 @@ NODE_ENV=production
 ```
 
 ### Step 3: Deploy
+
 ```bash
 # Push ke Git
 git add .
@@ -66,6 +74,7 @@ vercel --prod
 ```
 
 ### Step 4: Test
+
 ```bash
 1. Buka production URL
 2. Isi form kuesioner lengkap
@@ -77,11 +86,13 @@ vercel --prod
 ## 📊 Monitoring & Debugging
 
 ### Cek Logs di Vercel:
+
 ```
 Dashboard → Deployments → [Latest] → View Function Logs
 ```
 
 **Look for these emojis:**
+
 - 📝 = Request received
 - ✅ = Step completed successfully
 - 🔌 = Connecting to MongoDB
@@ -89,34 +100,38 @@ Dashboard → Deployments → [Latest] → View Function Logs
 - ❌ = Error occurred
 
 ### Cek Data di MongoDB:
+
 ```
 MongoDB Atlas → Database → Browse Collections → kuesioner
 ```
 
 ## 🐛 Common Issues & Solutions
 
-| Issue | Solution |
-|-------|----------|
-| **MongoServerSelectionError** | Add 0.0.0.0/0 to Network Access |
-| **Bad auth** | Check MONGODB_URI username/password |
-| **Function timeout** | Already fixed with `maxDuration: 10` |
-| **Data not in DB** | Check Vercel logs for actual error |
-| **Type errors** | Already fixed, rebuild: `npm run build` |
+| Issue                         | Solution                                |
+| ----------------------------- | --------------------------------------- |
+| **MongoServerSelectionError** | Add 0.0.0.0/0 to Network Access         |
+| **Bad auth**                  | Check MONGODB_URI username/password     |
+| **Function timeout**          | Already fixed with `maxDuration: 10`    |
+| **Data not in DB**            | Check Vercel logs for actual error      |
+| **Type errors**               | Already fixed, rebuild: `npm run build` |
 
 ## ✨ Improvements Made
 
 ### Performance:
+
 - ✅ Connection pooling untuk reuse connections
 - ✅ Retry mechanism untuk reliability
 - ✅ Optimized timeouts
 
 ### Developer Experience:
+
 - ✅ Emoji logging untuk easy debugging
 - ✅ Detailed error messages
 - ✅ Type safety improvements
 - ✅ Comprehensive documentation
 
 ### Production Readiness:
+
 - ✅ Vercel-optimized configuration
 - ✅ Environment variable fallbacks
 - ✅ Proper error handling
@@ -125,6 +140,7 @@ MongoDB Atlas → Database → Browse Collections → kuesioner
 ## 📝 Test Results
 
 ### Local Build:
+
 ```bash
 ✓ Compiled successfully
 ✓ Finished TypeScript
@@ -134,6 +150,7 @@ MongoDB Atlas → Database → Browse Collections → kuesioner
 ```
 
 ### Expected Production Behavior:
+
 ```
 User submits form
 → 📝 Receiving questionnaire submission...
