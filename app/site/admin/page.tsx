@@ -1,14 +1,15 @@
 import AdminDashboardShell from "../../components/admin/dashboard-shell";
-import clientPromise, { mongoDbName } from "../../lib/db";
+import { getMongoDb } from "../../lib/db";
 import { QuestionnaireData } from "../../types/kuesioner";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
   // Fetch kuesioner count from DB (server-side)
   let kuesionerCount: number | null = null;
   let questionnaires: QuestionnaireData[] = [];
   try {
-    const client = await clientPromise;
-    const db = client.db(mongoDbName);
+    const db = await getMongoDb();
     kuesionerCount = await db.collection("kuesioner").countDocuments();
     questionnaires = (await db
       .collection("kuesioner")

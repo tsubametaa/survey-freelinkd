@@ -1,7 +1,7 @@
 export interface IntroData {
   fullName: string;
   gender: string;
-  age: number;
+  age: string;
 }
 
 export interface Answer {
@@ -28,5 +28,5 @@ export interface QuestionnaireData {
   qaUmum: QaUmum;
   roleSpecific: RoleSpecific;
   qaEnd: QaEnd;
-  submittedAt?: Date;
+  submittedAt?: Date | string;
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "../../../../lib/db";
+import { getMongoDb } from "../../../../lib/db";
 import { User } from "../../../../types/user";
 
 export async function POST(request: NextRequest) {
@@ -10,8 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    const client = await clientPromise;
-    const db = client.db("freelinkd-db");
+    const db = await getMongoDb();
     const usersCollection = db.collection<User>("users");
 
     // Find user by email
