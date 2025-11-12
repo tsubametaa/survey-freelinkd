@@ -1,148 +1,96 @@
-import {
-  MongoClient,
-  ServerApiVersion,
-  type MongoClientOptions,
-} from "mongodb";
+import { DataAPIClient, type Db as AstraDatabase } from "@datastax/astra-db-ts";
 
-const resolvedUri =
-  process.env.MONGODB_URI ?? process.env.NEXT_PUBLIC_MONGODB_URI ?? "";
+const astraToken =
+  process.env.ASTRA_DB_APPLICATION_TOKEN ??
+  process.env.ASTRA_DB_TOKEN ??
+  process.env.NEXT_PUBLIC_ASTRA_DB_TOKEN ??
+  "";
 
-if (!resolvedUri) {
+const astraEndpoint =
+  process.env.ASTRA_DB_API_ENDPOINT ??
+  process.env.ASTRA_DB_ENDPOINT ??
+  process.env.NEXT_PUBLIC_ASTRA_DB_ENDPOINT ??
+  "";
+
+const astraKeyspace = process.env.ASTRA_DB_KEYSPACE ?? "kuesioner";
+const astraDatabaseName =
+  process.env.ASTRA_DB_DATABASE ?? "freelinkd_kuesioner";
+
+if (!astraToken || !astraEndpoint) {
   console.warn(
-    "WARNING: MONGODB_URI environment variable is not set. Questionnaire submissions will fail at runtime."
+    "WARNING: Astra DB credentials are not fully set. Questionnaire submissions will fail at runtime."
   );
 }
 
-export const mongoDbName =
-  process.env.MONGODB_DB_NAME ??
-  process.env.NEXT_PUBLIC_MONGODB_DB_NAME ??
-  "freelinkd-db";
-
-const shouldUseTls =
-  resolvedUri.startsWith("mongodb+srv://") ||
-  resolvedUri.includes("mongodb.net");
-
-const clientOptions: MongoClientOptions = {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: false,
-    deprecationErrors: true,
-  },
-  retryWrites: true,
-  retryReads: true,
-  maxPoolSize: 8,
-  minPoolSize: 0,
-  maxIdleTimeMS: 10000,
-  serverSelectionTimeoutMS: 8000,
-  connectTimeoutMS: 8000,
-  socketTimeoutMS: 20000,
+type AstraState = {
+  db: AstraDatabase | null;
+  promise: Promise<AstraDatabase> | null;
 };
 
-if (shouldUseTls) {
-  clientOptions.tls = true;
-  clientOptions.tlsAllowInvalidCertificates = false;
-  clientOptions.tlsAllowInvalidHostnames = false;
+const globalWithAstra = global as typeof globalThis & {
+  _freelinkdAstra?: AstraState;
+};
+
+if (!globalWithAstra._freelinkdAstra) {
+  globalWithAstra._freelinkdAstra = { db: null, promise: null };
 }
 
-type MongoState = {
-  client: MongoClient | null;
-  promise: Promise<MongoClient> | null;
-};
+const astraState = globalWithAstra._freelinkdAstra;
 
-const globalWithMongo = global as typeof globalThis & {
-  _freelinkdMongo?: MongoState;
-};
-
-if (!globalWithMongo._freelinkdMongo) {
-  globalWithMongo._freelinkdMongo = { client: null, promise: null };
-}
-
-const mongoState = globalWithMongo._freelinkdMongo;
-
-async function createClient(): Promise<MongoClient> {
-  if (!resolvedUri) {
+async function createAstraDb(): Promise<AstraDatabase> {
+  if (!astraToken || !astraEndpoint) {
     throw new Error(
-      "Missing MONGODB_URI environment variable. Please set it in your deployment settings."
+      "Missing Astra DB token or endpoint. Please set ASTRA_DB_TOKEN and ASTRA_DB_API_ENDPOINT."
     );
   }
 
-  console.log("Creating MongoDB client...", {
-    mongoDbName,
-    usingTls: shouldUseTls,
-    serverSelectionTimeoutMS: clientOptions.serverSelectionTimeoutMS,
-    socketTimeoutMS: clientOptions.socketTimeoutMS,
+  console.log("Creating DataStax Astra DB client...", {
+    endpoint: astraEndpoint,
+    keyspace: astraKeyspace,
+    database: astraDatabaseName,
   });
-  const client = new MongoClient(resolvedUri, clientOptions);
+
+  const client = new DataAPIClient(astraToken);
+  const db = client.db(astraEndpoint, { keyspace: astraKeyspace });
 
   try {
-    await client.connect();
-    console.log("MongoDB connection established");
-    return client;
-  } catch (error) {
-    console.error("Failed to establish MongoDB connection:", error);
-    await client.close().catch(() => {});
-    throw error;
-  }
-}
-
-async function resolveClient(): Promise<MongoClient> {
-  if (mongoState?.client) {
-    return mongoState.client;
-  }
-
-  if (!mongoState?.promise) {
-    mongoState!.promise = (async () => {
-      let lastError: Error | null = null;
-      const maxAttempts = process.env.NODE_ENV === "production" ? 2 : 3;
-
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          console.log(
-            `MongoDB connection attempt ${attempt}/${maxAttempts} (${process.env.NODE_ENV})`
-          );
-          const client = await createClient();
-          mongoState!.client = client;
-          return client;
-        } catch (error) {
-          lastError = error instanceof Error ? error : new Error(String(error));
-          mongoState!.client = null;
-
-          if (attempt < maxAttempts) {
-            const waitTime = attempt * 500;
-            console.warn(
-              `MongoDB connection attempt ${attempt} failed: ${lastError.message}. Retrying in ${waitTime}ms`
-            );
-            await new Promise((resolve) => setTimeout(resolve, waitTime));
-          }
-        }
-      }
-
-      mongoState!.promise = null;
-      throw lastError ?? new Error("Failed to connect to MongoDB");
-    })().catch((error) => {
-      mongoState!.promise = null;
-      throw error;
+    await db.listCollections();
+    console.log("Astra DB connection established", {
+      database: astraDatabaseName,
+      keyspace: astraKeyspace,
     });
-  }
-
-  return mongoState!.promise!;
-}
-
-export async function getMongoDb() {
-  const client = await resolveClient();
-
-  try {
-    const db = client.db(mongoDbName);
-    await db.command({ ping: 1 });
-    console.log("MongoDB ping successful", { database: mongoDbName });
     return db;
   } catch (error) {
-    mongoState!.client = null;
-    mongoState!.promise = null;
+    console.error("Failed to establish Astra DB connection:", error);
     throw error instanceof Error
       ? error
-      : new Error("Unknown error while retrieving MongoDB database");
+      : new Error("Unknown error while connecting to Astra DB");
   }
 }
 
-export default resolveClient;
+async function resolveAstraDb(): Promise<AstraDatabase> {
+  if (astraState?.db) {
+    return astraState.db;
+  }
+
+  if (!astraState?.promise) {
+    astraState!.promise = createAstraDb()
+      .then((db) => {
+        astraState!.db = db;
+        return db;
+      })
+      .catch((error) => {
+        astraState!.db = null;
+        astraState!.promise = null;
+        throw error;
+      });
+  }
+
+  return astraState!.promise!;
+}
+
+export async function getAstraDb(): Promise<AstraDatabase> {
+  return resolveAstraDb();
+}
+
+export default getAstraDb;

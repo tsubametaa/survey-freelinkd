@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getMongoDb } from "../../../lib/db";
+import { getAstraDb } from "../../../lib/db";
 import { User } from "../../../types/user";
 
 export async function POST(request: NextRequest) {
@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = await getMongoDb();
-    const usersCollection = db.collection<User>("users");
+    const db = await getAstraDb();
+    const usersCollection = db.collection<User>("user");
 
     // Check if user already exists
     const existingUser = await usersCollection.findOne({ email });

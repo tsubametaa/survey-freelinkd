@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMongoDb } from "../../../../lib/db";
+import { getAstraDb } from "../../../../lib/db";
 import { User } from "../../../../types/user";
 
 export async function POST(request: NextRequest) {
@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    const db = await getMongoDb();
-    const usersCollection = db.collection<User>("users");
+    const db = await getAstraDb();
+    const usersCollection = db.collection<User>("user");
 
     // Find user by email
     const user = await usersCollection.findOne({ email });

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { MongoServerSelectionError } from "mongodb";
-import { getMongoDb } from "../../lib/db";
+import { getAstraDb } from "../../lib/db";
 import type { Answer, QuestionnaireData } from "../../types/kuesioner";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +81,7 @@ export async function POST(request: NextRequest) {
     validatePayload(payload);
     console.log("✅ Payload validated successfully");
 
+    const submittedAt = new Date().toISOString();
     const document: QuestionnaireData = {
       intro: {
         fullName: payload.intro!.fullName.trim(),
@@ -98,19 +98,20 @@ export async function POST(request: NextRequest) {
       qaEnd: {
         answers: sanitizeAnswers(payload.qaEnd?.answers),
       },
-      submittedAt: new Date(),
+      submittedAt,
     };
 
-    console.log("🔌 Connecting to MongoDB...");
+    console.log("🔌 Connecting to Astra DB...");
 
-    // Use the improved getMongoDb with built-in retry logic
-    const db = await getMongoDb();
-    console.log("✅ MongoDB connected successfully");
+    // Use the Astra DB helper with built-in caching
+    const db = await getAstraDb();
+    const formsCollection = db.collection<QuestionnaireData>("form");
+    console.log("✅ Astra DB connected successfully");
 
     console.log("💾 Inserting document...");
 
     // Insert with timeout protection
-    const insertPromise = db.collection("kuesioner").insertOne(document);
+    const insertPromise = formsCollection.insertOne(document);
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(
         () => reject(new Error("Insert operation timed out after 10 seconds")),
@@ -119,7 +120,19 @@ export async function POST(request: NextRequest) {
     );
 
     const result = await Promise.race([insertPromise, timeoutPromise]);
-    console.log("✅ Document inserted with ID:", result.insertedId.toString());
+    const insertedId =
+      (result as { insertedId?: string | null; documentId?: string | null })
+        .insertedId ??
+      (result as { documentId?: string | null }).documentId ??
+      null;
+
+    if (!insertedId) {
+      throw new Error(
+        "Insert operation succeeded but no document ID was returned by Astra DB"
+      );
+    }
+
+    console.log("✅ Document inserted with ID:", insertedId);
 
     try {
       revalidatePath("/site/admin");
@@ -133,11 +146,8 @@ export async function POST(request: NextRequest) {
         success: true,
         message: "Questionnaire submitted successfully",
         data: {
-          id: result.insertedId.toString(),
-          timestamp:
-            document.submittedAt instanceof Date
-              ? document.submittedAt.toISOString()
-              : new Date().toISOString(),
+          id: insertedId,
+          timestamp: submittedAt,
         },
       },
       { status: 201 }
@@ -153,7 +163,10 @@ export async function POST(request: NextRequest) {
     let errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
 
-    if (error instanceof MongoServerSelectionError) {
+    if (
+      error instanceof Error &&
+      /timeout|network|fetch/i.test(error.message)
+    ) {
       errorMessage =
         "Tidak dapat terhubung ke database. Silakan coba lagi dalam beberapa saat.";
     }
