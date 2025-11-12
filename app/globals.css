@@ -10,6 +10,10 @@
     --highlight: #d0e3ff;
     --content: #e7f1ff;
   }
+
+  * {
+    font-family: var(--font-poppins), sans-serif;
+  }
 }
 
 @layer utilities {
