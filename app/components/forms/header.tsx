@@ -107,12 +107,12 @@ const Header: React.FC<HeaderProps> = ({ currentStep, userRole }) => {
           </div>
           <div className="hidden md:flex md:items-center text-white md:ml-4">
             <div className="text-right">
-              <p className="text-lg font-bold">Step {currentStep} of 3</p>
+              <p className="text-lg font-bold">Step {currentStep} of 4</p>
             </div>
           </div>
           <div className="md:hidden flex items-center text-white mt-2">
             <div className="text-center w-full">
-              <p className="text-sm font-bold">Step {currentStep} of 3</p>
+              <p className="text-sm font-bold">Step {currentStep} of 4</p>
             </div>
           </div>
         </div>
