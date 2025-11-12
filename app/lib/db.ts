@@ -8,8 +8,9 @@ const resolvedUri =
   process.env.MONGODB_URI ?? process.env.NEXT_PUBLIC_MONGODB_URI ?? "";
 
 if (!resolvedUri) {
-  throw new Error(
-    "Missing MONGODB_URI environment variable. Please set it in your environment configuration."
+  // Warning during build time, will error at runtime if still missing
+  console.warn(
+    "⚠️ WARNING: MONGODB_URI environment variable is not set. Connection will fail at runtime."
   );
 }
 
@@ -34,25 +35,37 @@ const clientOptions: MongoClientOptions = {
   retryReads: true,
 };
 
-let clientPromise: Promise<MongoClient>;
+let clientPromise: Promise<MongoClient> | null = null;
 
-if (process.env.NODE_ENV === "development") {
-  const globalWithMongo = global as typeof globalThis & {
-    _mongoClientPromise?: Promise<MongoClient>;
-  };
+if (resolvedUri) {
+  if (process.env.NODE_ENV === "development") {
+    const globalWithMongo = global as typeof globalThis & {
+      _mongoClientPromise?: Promise<MongoClient>;
+    };
 
-  if (!globalWithMongo._mongoClientPromise) {
+    if (!globalWithMongo._mongoClientPromise) {
+      const client = new MongoClient(resolvedUri, clientOptions);
+      globalWithMongo._mongoClientPromise = client.connect();
+    }
+    clientPromise = globalWithMongo._mongoClientPromise;
+  } else {
+    // Production: Create new client for each serverless function invocation
     const client = new MongoClient(resolvedUri, clientOptions);
-    globalWithMongo._mongoClientPromise = client.connect();
+    clientPromise = client.connect();
   }
-  clientPromise = globalWithMongo._mongoClientPromise;
-} else {
-  // Production: Create new client for each serverless function invocation
-  const client = new MongoClient(resolvedUri, clientOptions);
-  clientPromise = client.connect();
 }
 
 export async function getMongoDb() {
+  if (!resolvedUri) {
+    throw new Error(
+      "Missing MONGODB_URI environment variable. Please set it in your Vercel project settings."
+    );
+  }
+
+  if (!clientPromise) {
+    const client = new MongoClient(resolvedUri, clientOptions);
+    clientPromise = client.connect();
+  }
   try {
     console.log("Attempting to connect to MongoDB...");
     console.log("Environment:", process.env.NODE_ENV);

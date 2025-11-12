@@ -3,9 +3,5 @@
     "app/api/**/*.ts": {
       "maxDuration": 15
     }
-  },
-  "env": {
-    "MONGODB_URI": "@mongodb-uri",
-    "MONGODB_DB_NAME": "freelinkd-db"
   }
 }
