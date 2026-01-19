@@ -12,7 +12,7 @@ const astraEndpoint =
   process.env.NEXT_PUBLIC_ASTRA_DB_ENDPOINT ??
   "";
 
-const astraKeyspace = process.env.ASTRA_DB_KEYSPACE ?? "kuesioner";
+const astraKeyspace = process.env.ASTRA_DB_KEYSPACE ?? "freelinkd_kuesioner";
 const astraDatabaseName =
   process.env.ASTRA_DB_DATABASE ?? "freelinkd_kuesioner";
 

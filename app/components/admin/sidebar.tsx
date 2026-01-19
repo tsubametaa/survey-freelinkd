@@ -11,6 +11,7 @@ import {
   ChevronRight,
   NotepadText,
   X,
+  LogOut,
 } from "lucide-react";
 
 const menuItems = [
@@ -18,19 +19,16 @@ const menuItems = [
     id: "dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
-    href: "/site/personal/admin",
+    href: "/site/admin",
     hasSubmenu: false,
   },
   {
     id: "events",
     label: "Kuesioner",
     icon: NotepadText,
-    href: "/site/admin/kuesioner",
+    href: "/site/admin",
     hasSubmenu: true,
-    submenu: [
-      { label: "Manage Kuesioner", href: "/site/admin/kuesioner" },
-      { label: "Manage Volunteer", href: "/site/admin/kuesioner/user" },
-    ],
+    submenu: [{ label: "Manage Volunteer", href: "/site/admin/user" }],
   },
   {
     id: "settings",
@@ -106,7 +104,7 @@ export default function AdminSidebar({
     setOpenMenus((prev) =>
       prev.includes(menuId)
         ? prev.filter((id) => id !== menuId)
-        : [...prev, menuId]
+        : [...prev, menuId],
     );
   };
 
@@ -133,14 +131,14 @@ export default function AdminSidebar({
     const isActive = !item.hasSubmenu && pathname === item.href;
 
     return (
-      <div key={item.id} className="mb-1">
+      <div key={item.id} className="mb-2 px-3">
         <div
-          className={`flex items-center ${
-            isCollapsed ? "justify-center px-3" : "justify-between px-6"
-          } py-3 ${
-            isActive ? "bg-white/10 text-white font-semibold" : "text-white"
-          } hover:text-white hover:bg-white/10 hover:scale-105 hover:shadow-md transition-all duration-200 cursor-pointer rounded-md group border-b border-white/10 ${
-            item.hasSubmenu ? "" : ""
+          className={`group flex items-center ${
+            isCollapsed ? "justify-center px-2" : "justify-between px-4"
+          } py-3 rounded-xl cursor-pointer transition-all duration-300 ease-out border ${
+            isActive
+              ? "bg-white/10 text-white border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)_inset]"
+              : "text-slate-300 border-transparent hover:bg-white/5 hover:text-white hover:border-white/5"
           }`}
           onClick={() => (item.hasSubmenu ? toggleMenu(item.id) : null)}
           title={isCollapsed ? item.label : undefined}
@@ -153,40 +151,40 @@ export default function AdminSidebar({
             onClick={(e) => item.hasSubmenu && e.preventDefault()}
           >
             <Icon
-              className={`w-5 h-5 ${
+              className={`w-5 h-5 transition-colors duration-300 ${
                 isCollapsed ? "" : "mr-3"
-              } text-white group-hover:text-white`}
+              } ${isActive ? "text-indigo-300" : "text-slate-400 group-hover:text-indigo-300"}`}
             />
             {!isCollapsed && (
-              <>
-                <span className="font-medium text-sm">{item.label}</span>
-              </>
+              <span className="font-medium text-sm tracking-wide">
+                {item.label}
+              </span>
             )}
           </Link>
           {item.hasSubmenu && !isCollapsed && (
-            <div className="ml-2">
+            <div className="ml-2 text-slate-400 group-hover:text-white transition-colors">
               {isOpen ? (
-                <ChevronDown className="w-4 h-4 text-white" />
+                <ChevronDown className="w-4 h-4" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-white" />
+                <ChevronRight className="w-4 h-4" />
               )}
             </div>
           )}
         </div>
 
         {item.hasSubmenu && isOpen && item.submenu && !isCollapsed && (
-          <div className="ml-12 mb-2 transition-all duration-300 ease-in-out">
+          <div className="mt-1 ml-4 border-l border-white/10 pl-3 space-y-1 overflow-hidden animate-in slide-in-from-top-2 duration-200">
             {item.submenu.map((subItem, index) => {
               const subActive = pathname === subItem.href;
               return (
                 <Link
                   key={index}
                   href={subItem.href}
-                  className={`block px-6 py-2 text-sm ${
+                  className={`block px-4 py-2.5 text-sm rounded-lg transition-all duration-200 ${
                     subActive
-                      ? "bg-white/10 text-white font-semibold"
-                      : "text-white"
-                  } hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200 rounded-md`}
+                      ? "bg-white/10 text-white font-medium"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
                 >
                   {subItem.label}
                 </Link>
@@ -202,30 +200,31 @@ export default function AdminSidebar({
     <>
       {/* Mobile Overlay */}
       {isMobileOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden" />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar Container */}
       <div
         id="mobile-sidebar"
         className={`${
-          isCollapsed ? "w-16" : "w-64"
-        } bg-(--secondary) h-screen overflow-y-auto overflow-x-hidden border-r border-white/6 transition-all duration-300 shadow-xl backdrop-blur-sm
+          isCollapsed ? "w-20" : "w-72"
+        } h-screen bg-[#0B1F5C]/95 backdrop-blur-xl border-r border-white/5 shadow-2xl transition-all duration-300 ease-in-out
         ${
-          // Mobile positioning
           isMobileOpen
             ? "fixed left-0 top-0 z-50 md:relative md:z-auto"
-            : "fixed -left-64 top-0 z-50 md:relative md:left-0 md:z-auto"
-        } md:block`}
+            : "fixed -left-72 top-0 z-50 md:relative md:left-0 md:z-auto"
+        } md:flex md:flex-col`}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {/* Mobile Header with Logo and Close Button */}
+        {/* Decorative ambient light */}
+        <div className="absolute top-0 left-0 w-full h-64 bg-indigo-500/20 blur-[80px] pointer-events-none" />
+
+        {/* Mobile Header */}
         {isMobileOpen && (
-          <div className="flex items-center justify-between p-4 border-b border-white/20 md:hidden">
-            {/* Logo for Mobile */}
-            <div className="relative w-15 h-15 shrink-0">
+          <div className="flex items-center justify-between p-6 border-b border-white/10 md:hidden relative z-10">
+            <div className="relative w-12 h-12 shrink-0">
               <Image
                 src="/assets/freelinkd.svg"
                 alt="FreeLinkd Logo"
@@ -233,50 +232,80 @@ export default function AdminSidebar({
                 className="object-contain"
               />
             </div>
-
-            {/* Close Button */}
             <button
               onClick={onMobileClose}
-              className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
-              aria-label="Close sidebar"
+              className="cursor-pointer p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
         )}
 
-        {/* Logo Section for Desktop */}
-        <div className="hidden md:flex items-center justify-center px-0 py-6 border-b border-white/20 bg-(--secondary) backdrop-blur-sm">
-          <div className="flex items-center justify-center w-full">
-            <div
-              className={`relative ${
-                isCollapsed ? "w-10 h-10" : "w-24 h-24"
-              } shrink-0 mx-auto transition-all duration-300`}
-            >
-              <Image
-                src="/assets/freelinkd.svg"
-                alt="FreeLinkd Logo"
-                fill
-                className="object-contain"
-              />
-            </div>
+        {/* Desktop Logo Section */}
+        <div
+          className={`hidden md:flex items-center justify-center relative z-10 transition-all duration-300 ${
+            isCollapsed ? "py-6" : "py-8"
+          } border-b border-white/5`}
+        >
+          <div
+            className={`relative transition-all duration-500 ${
+              isCollapsed ? "w-10 h-10" : "w-32 h-32"
+            }`}
+          >
+            <Image
+              src="/assets/freelinkd.svg"
+              alt="FreeLinkd Logo"
+              fill
+              className="object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+            />
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-6 overflow-x-hidden">
-          {/* Admin Menu Section */}
-          <div className="mb-8">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-6 relative z-10 scrollbar-hide">
+          <div className="mb-2">
             {!isCollapsed && (
-              <div className="px-6 mb-4 bg-(--secondary) rounded-lg py-2 backdrop-blur-sm">
-                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
-                  Admin Menu
+              <div className="px-7 mb-4">
+                <h3 className="text-xs font-bold text-indigo-200/50 uppercase tracking-widest">
+                  Menu
                 </h3>
               </div>
             )}
             <div className="space-y-1">{menuItems.map(renderMenuItem)}</div>
           </div>
         </nav>
+
+        {/* Logout / Footer Section (Optional Enhancement) */}
+        {!isCollapsed && (
+          <div className="p-6 border-t border-white/5 relative z-10">
+            <button
+              onClick={() => {
+                localStorage.removeItem("adminUser");
+                window.location.href = "/site/personal/admin/login";
+              }}
+              className="cursor-pointer flex items-center w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 hover:border hover:border-white/5 transition-all duration-200 group"
+            >
+              <LogOut className="w-5 h-5 mr-3 text-slate-400 group-hover:text-red-400 transition-colors" />
+              <span className="text-sm font-medium">Sign Out</span>
+            </button>
+          </div>
+        )}
+
+        {/* Collapsed Footer Icon */}
+        {isCollapsed && (
+          <div className="p-4 border-t border-white/5 relative z-10 flex justify-center">
+            <button
+              onClick={() => {
+                localStorage.removeItem("adminUser");
+                window.location.href = "/site/personal/admin/login";
+              }}
+              className="cursor-pointer p-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all text-slate-400 hover:text-red-400"
+              title="Sign Out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

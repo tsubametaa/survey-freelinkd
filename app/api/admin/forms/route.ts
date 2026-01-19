@@ -1,17 +1,22 @@
-import AdminDashboardShell from "../../components/admin/dashboard-shell";
-import { getAstraDb } from "../../lib/db";
-import { QuestionnaireData } from "../../types/kuesioner";
+import { NextResponse } from "next/server";
+import { getAstraDb } from "@/app/lib/db";
+import { QuestionnaireData } from "@/app/types/kuesioner";
 
-export const dynamic = "force-dynamic";
-
-export default async function AdminDashboardPage() {
-  // Fetch all data from DB (server-side) - show all records at once
-  let kuesionerCount: number | null = null;
-  let questionnaires: QuestionnaireData[] = [];
-
+/**
+ * GET /api/admin/forms
+ *
+ * Fetches ALL questionnaire data from the Astra DB 'form' collection
+ * without any pagination limit. Uses batch iteration to overcome
+ * Astra DB's default 20 document limit per query.
+ */
+export async function GET() {
   try {
+    console.log("🔌 Connecting to Astra DB for forms fetch...");
+
     const db = await getAstraDb();
     const formsCollection = db.collection<QuestionnaireData>("form");
+
+    console.log("✅ Astra DB connected, fetching all forms...");
 
     // Astra DB has a default limit of 20 documents per query
     // We need to iterate through all documents using pagination
@@ -51,19 +56,21 @@ export default async function AdminDashboardPage() {
       `📊 Successfully fetched ${allForms.length} forms from database`,
     );
 
-    questionnaires = allForms;
-    kuesionerCount = allForms.length;
-  } catch (err) {
-    // keep null to indicate error; page will render fallback
-    console.error("Failed to fetch kuesioner data:", err);
-    kuesionerCount = null;
-    questionnaires = [];
+    return NextResponse.json({
+      success: true,
+      data: allForms,
+      totalCount: allForms.length,
+      message: `Successfully fetched all ${allForms.length} questionnaire records`,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching forms:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch questionnaire data",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
   }
-
-  return (
-    <AdminDashboardShell
-      respondentCount={kuesionerCount}
-      questionnaires={questionnaires}
-    />
-  );
 }

@@ -1,7 +1,21 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { LayoutDashboard, Users, RefreshCcw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  LayoutDashboard,
+  Users,
+  User,
+  RefreshCcw,
+  Search,
+  Download,
+  X,
+  ChevronRight,
+  Filter,
+  FileText,
+  Calendar,
+  Briefcase,
+} from "lucide-react";
 import AdminNavbar from "./navbar";
 import AdminSidebar from "./sidebar";
 import { QuestionnaireData, Answer } from "../../types/kuesioner";
@@ -21,6 +35,7 @@ export default function AdminDashboardShell({
   const [selectedQuestionnaire, setSelectedQuestionnaire] =
     useState<QuestionnaireData | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const router = useRouter();
 
   const filteredQuestionnaires = useMemo(() => {
     if (!searchTerm) return questionnaires;
@@ -31,6 +46,9 @@ export default function AdminDashboardShell({
       return name.includes(q) || role.includes(q);
     });
   }, [questionnaires, searchTerm]);
+
+  // Show all filtered questionnaires (no pagination)
+  const paginatedQuestionnaires = filteredQuestionnaires;
 
   useEffect(() => {
     const handleResize = () => {
@@ -49,6 +67,8 @@ export default function AdminDashboardShell({
     }
     return respondentCount.toLocaleString("id-ID");
   }, [respondentCount]);
+
+  const startIndexOffset = 0; // Always start from 0 since we're showing all data
 
   const handleToggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -103,7 +123,7 @@ export default function AdminDashboardShell({
         "";
 
       return [
-        index + 1,
+        startIndexOffset + index + 1,
         q.intro?.fullName || "",
         q.intro?.gender || "",
         q.intro?.age ?? "",
@@ -157,7 +177,7 @@ export default function AdminDashboardShell({
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `data-kuesioner-${new Date().toISOString().split("T")[0]}.csv`
+      `data-kuesioner-${new Date().toISOString().split("T")[0]}.csv`,
     );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
@@ -166,47 +186,63 @@ export default function AdminDashboardShell({
   };
 
   return (
-    <div className="min-h-screen flex bg-(--bg) overflow-hidden">
-      <AdminSidebar
-        isCollapsed={isSidebarCollapsed}
-        isMobileOpen={isMobileSidebarOpen}
-        onMobileClose={handleCloseMobileSidebar}
-      />
+    <div className="h-screen flex flex-col md:flex-row bg-[#f8fafc] overflow-hidden relative selection:bg-indigo-500/30 font-sans">
+      {/* Decorative Background Blobs for Glassmorphism */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-slate-50">
+        <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-blue-400/10 rounded-full blur-[100px] mix-blend-multiply opacity-80" />
+        <div className="absolute top-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-indigo-500/10 rounded-full blur-[100px] mix-blend-multiply opacity-80" />
+        <div className="absolute bottom-[-20%] left-[20%] w-[50vw] h-[50vw] bg-purple-400/10 rounded-full blur-[100px] mix-blend-multiply opacity-80" />
+      </div>
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="z-30 h-full shadow-2xl relative">
+        <AdminSidebar
+          isCollapsed={isSidebarCollapsed}
+          isMobileOpen={isMobileSidebarOpen}
+          onMobileClose={handleCloseMobileSidebar}
+        />
+      </div>
+
+      <div className="flex-1 flex flex-col min-w-0 z-10 relative">
         <AdminNavbar
           onToggleSidebar={handleToggleSidebar}
           onToggleMobileSidebar={handleToggleMobileSidebar}
         />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-10 pt-8 md:px-10 lg:px-12">
-          <section className="rounded-3xl bg-linear-to-r from-[#0B1F5C] via-[#132B74] to-[#0B1F5C] text-white shadow-xl px-6 py-8 md:px-12 md:py-10">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-3xl">
-                <div className="flex items-center gap-4">
-                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 shadow-inner">
-                    <LayoutDashboard className="h-7 w-7" />
-                  </span>
-                  <div>
-                    <h1 className="text-2xl font-semibold md:text-3xl lg:text-4xl">
-                      Admin Dashboard Management
-                    </h1>
-                    <p className="mt-2 text-sm text-white/80 md:text-base">
-                      Manage freelancer applications, approve or reject
-                      candidates, and track statistics
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center rounded-2xl bg-white/10 px-5 py-4 text-white/80 shadow-inner max-w-xs">
-                <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-                  <Users className="h-6 w-6" />
+        <main className="flex-1 flex flex-col overflow-hidden px-4 md:px-8 py-6 relative">
+          {/* Header Card */}
+          <section className="relative rounded-3xl overflow-hidden shadow-xl mb-6 group shrink-0">
+            {/* Glass Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0B1F5C] via-[#132B74] to-[#0B1F5C] opacity-95" />
+
+            {/* Glossy Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.4),transparent_50%)]" />
+
+            <div className="relative px-6 py-8 md:px-10 md:py-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-start md:items-center gap-5">
+                <div className="p-3.5 rounded-2xl bg-white/10 border border-white/20 shadow-inner backdrop-blur-sm shrink-0">
+                  <LayoutDashboard className="h-7 w-7 text-indigo-100" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide">
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+                    Admin Dashboard
+                  </h1>
+                  <p className="text-indigo-100/80 text-sm mt-1 max-w-lg font-light">
+                    Monitor questionnaire responses, track statistics, and
+                    manage data.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center backdrop-blur-md bg-white/10 border border-white/10 rounded-2xl px-5 py-3 shadow-lg hover:bg-white/15 transition-all duration-300">
+                <div className="mr-4 p-2.5 rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-500/30 border border-white/10">
+                  <Users className="h-5 w-5 text-indigo-100" />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-indigo-200 font-semibold mb-0.5">
                     Total Responden
                   </p>
-                  <p className="text-2xl font-semibold">
+                  <p className="text-2xl font-bold text-white tracking-tight leading-none">
                     {formattedRespondentCount}
                   </p>
                 </div>
@@ -214,285 +250,280 @@ export default function AdminDashboardShell({
             </div>
           </section>
 
-          {/* Questionnaire Data Table */}
-          <section className="mt-10">
-            <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
-                    <Users className="h-6 w-6" />
-                  </span>
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      Data Kuesioner
-                    </h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Daftar semua responden dan jawaban mereka
-                    </p>
+          {/* Main Content Area - Glass Container */}
+          <section className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 bg-white/60 backdrop-blur-xl border border-white/60 rounded-3xl shadow-lg flex flex-col overflow-hidden ring-1 ring-white/40">
+              {/* Handlers & Filters */}
+              <div className="px-6 py-4 border-b border-indigo-100/50 flex flex-col md:flex-row items-center justify-between gap-4 bg-white/40">
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  <div className="p-2 rounded-lg bg-indigo-100/50 text-indigo-700">
+                    <Users className="h-5 w-5" />
                   </div>
+                  <h2 className="text-lg font-bold text-slate-800">
+                    Data Kuesioner
+                  </h2>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="relative">
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  {/* Search */}
+                  <div className="relative group flex-1 md:w-64">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Search className="h-4 w-4" />
+                    </div>
                     <input
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search by name, role..."
-                      className="w-64 pl-3 pr-10 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Search name or role..."
+                      className="w-full pl-9 pr-4 py-2 bg-white/70 border border-slate-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all hover:bg-white"
                     />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"
-                        />
-                      </svg>
-                    </div>
                   </div>
 
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors duration-150"
-                    title="Refresh"
-                  >
-                    <RefreshCcw className="w-4 h-4 text-gray-600" />
-                  </button>
-
-                  {questionnaires.length > 0 && (
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={handleDownloadCSV}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-medium"
+                      onClick={() => window.location.reload()}
+                      className="cursor-pointer p-2 rounded-xl border border-slate-200/60 bg-white/60 hover:bg-white hover:shadow-md text-slate-600 transition-all"
+                      title="Refresh"
                     >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                      Download CSV
+                      <RefreshCcw className="w-4 h-4" />
                     </button>
-                  )}
+
+                    {questionnaires.length > 0 && (
+                      <button
+                        onClick={handleDownloadCSV}
+                        className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-emerald-900/10 hover:shadow-emerald-900/20 transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span className="hidden sm:inline">Export CSV</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        No
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Nama
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Jenis Kelamin
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Usia
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Role
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tanggal Submit
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Aksi
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredQuestionnaires.map((q, index) => (
-                      <tr
+
+              {/* Data Content */}
+              <div className="flex-1 overflow-auto relative">
+                {/* Mobile View */}
+                <div className="lg:hidden p-4 space-y-3">
+                  {paginatedQuestionnaires.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center text-slate-400">
+                      <FileText className="h-12 w-12 mb-3 opacity-20" />
+                      <p>No data found</p>
+                    </div>
+                  ) : (
+                    paginatedQuestionnaires.map((q, index) => (
+                      <div
                         key={index}
-                        className="hover:bg-indigo-50 hover:shadow-md transition-all duration-200 cursor-pointer"
+                        className="bg-white/80 backdrop-blur-sm border border-indigo-50/60 rounded-xl p-4 shadow-sm hover:shadow-md transition-all"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {index + 1}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {q.intro?.fullName || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {q.intro?.gender || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {q.intro?.age || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {q.userRole || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {q.submittedAt
-                            ? new Date(q.submittedAt).toLocaleDateString(
-                                "id-ID"
-                              )
-                            : "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <button
-                            onClick={() => setSelectedQuestionnaire(q)}
-                            className="text-indigo-600 hover:text-white hover:bg-indigo-600 px-3 py-1 rounded-md transition-all duration-200 transform hover:scale-105 hover:shadow-lg font-medium"
-                          >
-                            Lihat Detail
-                          </button>
-                        </td>
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="font-semibold text-slate-800">
+                              {q.intro?.fullName || "Unnamed"}
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {q.userRole}
+                            </p>
+                          </div>
+                          <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-500">
+                            #{startIndexOffset + index + 1}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-2 text-sm text-slate-600 mb-4">
+                          <div className="flex items-center gap-2">
+                            <User className="w-3 h-3 text-slate-400" />
+                            <span>{q.intro?.gender || "-"}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span>
+                              {q.intro?.age ? `${q.intro.age} thn` : "-"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => setSelectedQuestionnaire(q)}
+                          className="cursor-pointer w-full py-2 flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          View Details <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden lg:block">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-indigo-50/40 backdrop-blur-sm sticky top-0 z-10 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                      <tr>
+                        <th className="px-6 py-4 rounded-tl-lg">No</th>
+                        <th className="px-6 py-4">Nama Lengkap</th>
+                        <th className="px-6 py-4">Jenis Kelamin</th>
+                        <th className="px-6 py-4">Usia</th>
+                        <th className="px-6 py-4">Role</th>
+                        <th className="px-6 py-4">Tanggal Submit</th>
+                        <th className="px-6 py-4 rounded-tr-lg">Aksi</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {questionnaires.length === 0 && (
-                  <div className="px-6 py-8 text-center text-gray-500">
-                    Belum ada data kuesioner
-                  </div>
-                )}
+                    </thead>
+                    <tbody className="divide-y divide-indigo-50/50">
+                      {paginatedQuestionnaires.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-6 py-12 text-center text-slate-400"
+                          >
+                            No data available
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedQuestionnaires.map((q, index) => (
+                          <tr
+                            key={index}
+                            className="hover:bg-indigo-50/30 transition-colors group"
+                          >
+                            <td className="px-6 py-4 text-sm text-slate-500">
+                              {startIndexOffset + index + 1}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-medium text-slate-800 group-hover:text-indigo-700 transition-colors">
+                              {q.intro?.fullName || "-"}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-600">
+                              {q.intro?.gender || "-"}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-600">
+                              {q.intro?.age || "-"}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-600">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                {q.userRole || "-"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-500">
+                              {q.submittedAt
+                                ? new Date(q.submittedAt).toLocaleDateString(
+                                    "id-ID",
+                                  )
+                                : "-"}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              <button
+                                onClick={() => setSelectedQuestionnaire(q)}
+                                className="cursor-pointer text-indigo-600 hover:text-indigo-800 font-medium text-xs border border-indigo-200 bg-white/50 px-3 py-1.5 rounded-lg hover:bg-white hover:shadow-sm transition-all"
+                              >
+                                Detail
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </section>
         </main>
       </div>
 
-      {/* Detail Modal */}
+      {/* Modal - Improved Glass Style */}
       {selectedQuestionnaire && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white shadow-2xl max-w-5xl w-full max-h-[95vh] flex flex-col rounded-t-xl rounded-b-xl overflow-hidden">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setSelectedQuestionnaire(null)}
+          />
+
+          {/* Modal Container */}
+          <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col border border-white/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="px-8 py-6 border-b border-gray-200 bg-linear-to-r from-indigo-50 to-blue-50 shrink-0 rounded-t-xl">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    Detail Kuesioner
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Responden: {selectedQuestionnaire.intro?.fullName}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSelectedQuestionnaire(null)}
-                  className="text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full p-2 transition-all duration-200 transform hover:scale-110 hover:rotate-90"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
+            <div className="px-8 py-5 border-b border-indigo-100 flex items-center justify-between bg-gradient-to-r from-indigo-50/50 to-white/50">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800">
+                  Detail Kuesioner
+                </h3>
+                <p className="text-slate-500 text-sm">
+                  Responden:{" "}
+                  <span className="font-semibold text-indigo-700">
+                    {selectedQuestionnaire.intro?.fullName}
+                  </span>
+                </p>
               </div>
+              <button
+                onClick={() => setSelectedQuestionnaire(null)}
+                className="cursor-pointer p-2 rounded-full hover:bg-red-50 hover:text-red-500 text-slate-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-8 space-y-8">
-                {/* Intro Data */}
-                <div className="bg-gray-50 rounded-lg p-6 hover:bg-indigo-50 transition-colors duration-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <svg
-                      className="w-5 h-5 mr-2 text-indigo-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                    Informasi Pribadi
+            {/* Modal Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50/30">
+              <div className="space-y-6">
+                {/* Personal Info Section */}
+                <div className="bg-white/80 rounded-2xl p-6 border border-indigo-50 shadow-sm">
+                  <h4 className="text-sm uppercase tracking-wider text-slate-400 font-bold mb-4 flex items-center gap-2">
+                    <User className="w-4 h-4" /> Informasi Pribadi
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all duration-200 transform hover:scale-102">
-                      <div className="text-sm font-medium text-gray-500">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-xs text-slate-400 block mb-1">
                         Nama Lengkap
-                      </div>
-                      <div className="text-lg font-semibold text-gray-900 mt-1">
+                      </span>
+                      <span className="font-semibold text-slate-800">
                         {selectedQuestionnaire.intro?.fullName}
-                      </div>
+                      </span>
                     </div>
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all duration-200 transform hover:scale-102">
-                      <div className="text-sm font-medium text-gray-500">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-xs text-slate-400 block mb-1">
                         Jenis Kelamin
-                      </div>
-                      <div className="text-lg font-semibold text-gray-900 mt-1">
+                      </span>
+                      <span className="font-semibold text-slate-800">
                         {selectedQuestionnaire.intro?.gender}
-                      </div>
+                      </span>
                     </div>
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all duration-200 transform hover:scale-102">
-                      <div className="text-sm font-medium text-gray-500">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-xs text-slate-400 block mb-1">
                         Usia
-                      </div>
-                      <div className="text-lg font-semibold text-gray-900 mt-1">
+                      </span>
+                      <span className="font-semibold text-slate-800">
                         {selectedQuestionnaire.intro?.age}
-                      </div>
+                      </span>
                     </div>
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all duration-200 transform hover:scale-102">
-                      <div className="text-sm font-medium text-gray-500">
-                        Peran
-                      </div>
-                      <div className="text-lg font-semibold text-gray-900 mt-1">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-xs text-slate-400 block mb-1">
+                        Role
+                      </span>
+                      <span className="font-semibold text-slate-800">
                         {selectedQuestionnaire.userRole}
-                      </div>
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* QA Umum */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:border-blue-300 hover:shadow-lg transition-all duration-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <svg
-                      className="w-5 h-5 mr-2 text-blue-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
+                {/* Kuesioner Umum */}
+                <div className="bg-white/80 rounded-2xl p-6 border border-blue-100 shadow-sm">
+                  <h4 className="text-sm uppercase tracking-wider text-blue-400 font-bold mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-400" />{" "}
                     Kuesioner Umum
                   </h4>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {selectedQuestionnaire.qaUmum?.answers?.map((answer) => (
                       <div
                         key={answer.questionId}
-                        className="border-l-4 border-blue-500 pl-4 py-2"
+                        className="group p-4 rounded-xl hover:bg-blue-50/50 transition-colors border border-transparent hover:border-blue-100"
                       >
-                        <div className="text-sm font-medium text-gray-900 mb-2">
+                        <p className="text-sm font-medium text-slate-700 mb-2">
                           {getQuestionText(
                             selectedQuestionnaire.userRole,
                             "umum",
-                            answer.questionId
+                            answer.questionId,
                           )}
-                        </div>
-                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                          <strong>Jawaban:</strong>{" "}
+                        </p>
+                        <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 group-hover:bg-white group-hover:border-blue-200">
                           {answer.answer || `Rating: ${answer.rating}`}
                         </div>
                       </div>
@@ -500,88 +531,68 @@ export default function AdminDashboardShell({
                   </div>
                 </div>
 
-                {/* Role Specific */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:border-green-300 hover:shadow-lg transition-all duration-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <svg
-                      className="w-5 h-5 mr-2 text-green-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                      />
-                    </svg>
+                {/* Kuesioner Role Specific */}
+                <div className="bg-white/80 rounded-2xl p-6 border border-emerald-100 shadow-sm">
+                  <h4 className="text-sm uppercase tracking-wider text-emerald-400 font-bold mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400" />{" "}
                     Kuesioner {selectedQuestionnaire.userRole}
                   </h4>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {selectedQuestionnaire.roleSpecific?.answers?.map(
                       (answer) => (
                         <div
                           key={answer.questionId}
-                          className="border-l-4 border-green-500 pl-4 py-2"
+                          className="group p-4 rounded-xl hover:bg-emerald-50/50 transition-colors border border-transparent hover:border-emerald-100"
                         >
-                          <div className="text-sm font-medium text-gray-900 mb-2">
+                          <p className="text-sm font-medium text-slate-700 mb-2">
                             {getQuestionText(
                               selectedQuestionnaire.userRole,
                               "role",
-                              answer.questionId
+                              answer.questionId,
+                            )}
+                          </p>
+                          <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 group-hover:bg-white group-hover:border-emerald-200">
+                            {answer.rating ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs">
+                                Rating: {answer.rating}/5
+                              </span>
+                            ) : (
+                              answer.answer
                             )}
                           </div>
-                          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                            <strong>Jawaban:</strong>{" "}
-                            {answer.rating
-                              ? `Rating: ${answer.rating}/5`
-                              : answer.answer}
-                          </div>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
                 </div>
 
-                {/* QA End */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:border-purple-300 hover:shadow-lg transition-all duration-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <svg
-                      className="w-5 h-5 mr-2 text-purple-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
+                {/* Kuesioner Penutup */}
+                <div className="bg-white/80 rounded-2xl p-6 border border-purple-100 shadow-sm">
+                  <h4 className="text-sm uppercase tracking-wider text-purple-400 font-bold mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-purple-400" />{" "}
                     Kuesioner Penutup
                   </h4>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {selectedQuestionnaire.qaEnd?.answers?.map((answer) => (
                       <div
                         key={answer.questionId}
-                        className="border-l-4 border-purple-500 pl-4 py-2"
+                        className="group p-4 rounded-xl hover:bg-purple-50/50 transition-colors border border-transparent hover:border-purple-100"
                       >
-                        <div key={answer.questionId} className="text-sm">
-                          <div className="text-sm font-medium text-gray-900 mb-2">
-                            {getQuestionText(
-                              selectedQuestionnaire.userRole,
-                              "end",
-                              answer.questionId
-                            )}
-                          </div>
-                          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                            <strong>Jawaban:</strong>{" "}
-                            {answer.rating
-                              ? `Rating: ${answer.rating}/5`
-                              : answer.answer}
-                          </div>
+                        <p className="text-sm font-medium text-slate-700 mb-2">
+                          {getQuestionText(
+                            selectedQuestionnaire.userRole,
+                            "end",
+                            answer.questionId,
+                          )}
+                        </p>
+                        <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 group-hover:bg-white group-hover:border-purple-200">
+                          {answer.rating ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-800 font-bold text-xs">
+                              Rating: {answer.rating}/5
+                            </span>
+                          ) : (
+                            answer.answer
+                          )}
                         </div>
                       </div>
                     ))}
@@ -591,10 +602,10 @@ export default function AdminDashboardShell({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-8 py-4 border-t border-gray-200 bg-gray-50 flex justify-end shrink-0 rounded-b-xl">
+            <div className="px-8 py-5 bg-white border-t border-slate-100 flex justify-end">
               <button
                 onClick={() => setSelectedQuestionnaire(null)}
-                className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-800 hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-medium"
+                className="cursor-pointer px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-colors shadow-lg shadow-slate-200"
               >
                 Tutup
               </button>
